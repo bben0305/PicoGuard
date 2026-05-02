@@ -34,11 +34,13 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
-// 格式化時間
+// 格式化時間（台灣時間 UTC+8）
 function formatTime(timestamp) {
     if (!timestamp) return '-';
     const date = new Date(timestamp);
-    return date.toLocaleString('zh-TW', {
+    // 轉換為台灣時間 (UTC+8)
+    const taiwanTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+    return taiwanTime.toLocaleString('zh-TW', {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
@@ -53,14 +55,12 @@ async function updateSystemStatus() {
         
         if (response.status === 'success' && response.devices.length > 0) {
             const latestDevice = response.devices[0];
-            const lastSeen = new Date(latestDevice.last_seen);
-            const now = new Date();
-            const diffMinutes = (now - lastSeen) / (1000 * 60);
             
-            if (diffMinutes < 5) {
+            // 使用後端計算的 is_online 和 offline_minutes
+            if (latestDevice.is_online) {
                 elements.systemStatus.textContent = '系統正常運行';
                 elements.systemStatus.style.color = 'var(--primary-color)';
-            } else if (diffMinutes < 30) {
+            } else if (latestDevice.offline_minutes < 30) {
                 elements.systemStatus.textContent = `最後更新: ${formatTime(latestDevice.last_seen)}`;
                 elements.systemStatus.style.color = '#f59e0b';
             } else {
@@ -85,7 +85,7 @@ async function updateStats() {
         const deviceCount = devicesResponse.status === 'success' ? devicesResponse.devices.length : 0;
         
         // 獲取最新數據
-        const dataResponse = await apiRequest('/sensors/data?limit=1');
+        const dataResponse = await apiRequest('/sensors/data');
         let latestTemp = '-';
         let latestMoisture = '-';
         

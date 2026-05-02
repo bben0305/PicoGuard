@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PicoGuard - 智能植栽監控系統</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    🌱 PicoGuard
+                </div>
+                <nav class="nav">
+                    <a href="/" class="nav-link active">首頁</a>
+                    <a href="/static/dashboard.html" class="nav-link">儀表板</a>
+                    <a href="/docs" class="nav-link">API 文件</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">智能植栽監控系統</h1>
+                    <p class="hero-subtitle">
+                        基於 Raspberry Pi Pico 的植物生長環境監控解決方案
+                    </p>
+                    <div class="hero-actions">
+                        <a href="/static/dashboard.html" class="btn btn-primary">
+                            查看儀表板
+                        </a>
+                        <a href="/docs" class="btn btn-secondary">
+                            API 文件
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="status-card">
+                        <div class="status-indicator online"></div>
+                        <div class="status-text">
+                            <div class="status-title">系統狀態</div>
+                            <div class="status-desc" id="system-status">檢查中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2 class="section-title">核心功能</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🌡️</div>
+                        <h3 class="feature-title">溫度監控</h3>
+                        <p class="feature-desc">即時監控環境溫度，確保植物生長在最佳溫度範圍</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💧</div>
+                        <h3 class="feature-title">土壤濕度</h3>
+                        <p class="feature-desc">精確測量土壤濕度，適時提醒澆水，避免過度或不足</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3 class="feature-title">數據分析</h3>
+                        <p class="feature-desc">歷史數據追蹤與分析，了解植物生長趨勢</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔗</div>
+                        <h3 class="feature-title">遠端監控</h3>
+                        <p class="feature-desc">透過網路隨時查看植物狀態，支援行動裝置</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats">
+            <div class="container">
+                <h2 class="section-title">即時數據</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="device-count">-</div>
+                        <div class="stat-label">在線裝置</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="latest-temp">-</div>
+                        <div class="stat-label">最新溫度 (°C)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="latest-moisture">-</div>
+                        <div class="stat-label">土壤濕度 (%)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="data-count">-</div>
+                        <div class="stat-label">數據點總數</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-text">
+                    © 2024 PicoGuard. 智能植栽監控系統
+                </div>
+                <div class="footer-links">
+                    <a href="/docs">API 文件</a>
+                    <a href="https://github.com/yourusername/picoguard" target="_blank">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

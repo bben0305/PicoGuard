@@ -1,0 +1,41 @@
+{
+  "project": {
+    "name": "PicoGuard",
+    "description": "智能植栽監控系統 - Pico + ESP01 + FastAPI",
+    "context_files": [
+      ".windsurf/contexts/project_overview.md",
+      ".windsurf/contexts/backend_context.md",
+      ".windsurf/contexts/firmware_context.md"
+    ],
+    "memory_files": [
+      ".windsurf/memories/tech_stack.json",
+      ".windsurf/memories/issue_log.md"
+    ]
+  },
+  "ai_behavior": {
+    "preload_context": true,
+    "context_priority": [
+      "project_overview",
+      "relevant_subproject",
+      "issue_log",
+      "tech_stack"
+    ],
+    "token_optimization": {
+      "summarize_code": true,
+      "avoid_repeating_context": true,
+      "reference_by_file_path": true
+    }
+  },
+  "hints": {
+    "file_patterns": {
+      "backend/*.py": "backend_context.md",
+      "firmware/pico/*.py": "firmware_context.md"
+    },
+    "common_issues": [
+      "MicroPython 不支援 int | None 型別提示",
+      "MicroPython UART.write() 參數限制",
+      "ESP01 需要 \r\n 結尾",
+      "土壤感測器防鏽設計 (GPIO22)"
+    ]
+  }
+}

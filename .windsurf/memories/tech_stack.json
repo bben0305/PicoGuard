@@ -1,0 +1,68 @@
+{
+  "project": "PicoGuard",
+  "last_updated": "2026-04-29",
+  "technologies": {
+    "backend": {
+      "language": "Python 3.10+",
+      "framework": "FastAPI 0.136+",
+      "server": "Uvicorn",
+      "database": "SQLite (SQLAlchemy 2.0+)",
+      "config": "Pydantic Settings 2.14+",
+      "validation": "Pydantic 2.13+",
+      "key_libraries": [
+        "fastapi",
+        "uvicorn[standard]",
+        "pydantic>=2.9.0",
+        "pydantic-settings>=2.0.0",
+        "sqlalchemy>=2.0.0",
+        "python-dotenv>=1.0.0"
+      ]
+    },
+    "firmware": {
+      "language": "MicroPython",
+      "board": "Raspberry Pi Pico (RP2040)",
+      "wifi_module": "ESP01 (ESP8266)",
+      "communication": "UART AT Commands",
+      "sensors": {
+        "soil_moisture": "Analog (ADC0, GPIO26)",
+        "dht22": "Digital (GPIO16, optional)"
+      },
+      "key_features": [
+        "machine.Pin - GPIO control",
+        "machine.ADC - Analog reading",
+        "machine.UART - ESP01 communication",
+        "machine.PWM - Pump control (optional)",
+        "time.sleep_ms() - Millisecond delays",
+        "time.ticks_ms() - Tick counting"
+      ]
+    },
+    "hardware": {
+      "microcontroller": "Raspberry Pi Pico (non-W)",
+      "wifi": "ESP01 via UART0 (GPIO0/1)",
+      "anti_rust_design": {
+        "description": "GPIO22 controls sensor power to prevent electrolysis",
+        "pin": "GPIO22",
+        "operation": "Power on → Read → Power off"
+      },
+      "power": "USB or 5V external"
+    }
+  },
+  "constraints": {
+    "micropython": [
+      "No union type hints (int | None) - use plain assignment",
+      "No dataclasses",
+      "Limited standard library",
+      "f-strings supported (v1.12+)"
+    ],
+    "esp01": [
+      "AT command communication only",
+      "HTTP supported, HTTPS problematic",
+      "UART baudrate 115200"
+    ],
+    "development": [
+      "Use Thonny IDE for Pico",
+      "Always use escape delay for safety",
+      "Calibrate soil sensor values empirically"
+    ]
+  }
+}

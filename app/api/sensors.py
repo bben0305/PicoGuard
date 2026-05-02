@@ -2,7 +2,7 @@
 感測器數據 API 路由
 """
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Header
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -35,9 +35,18 @@ class SensorDataResponse(BaseModel):
 
 
 @router.post("/data", status_code=status.HTTP_201_CREATED)
-async def receive_sensor_data(data: SensorData, db: Session = Depends(get_db)):
+async def receive_sensor_data(data: SensorData, api_key: str = Header(None), db: Session = Depends(get_db)):
     """接收 Pico 裝置的感測器數據並儲存到資料庫"""
     try:
+        # 驗證 API Key
+        if api_key != "picoguard-device-key-2024":
+            print(f"❌ API Key 驗證失敗: {api_key}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="無效的 API Key"
+            )
+        
+        print(f"✅ API Key 驗證成功: {api_key}")
         # 確保資料表存在
         create_tables()
         # 記錄接收到的數據

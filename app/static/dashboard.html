@@ -24,6 +24,14 @@
             border-radius: 1rem;
             padding: 1.5rem;
             box-shadow: var(--shadow);
+            height: 300px; /* 固定高度防止無限增長 */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chart-container canvas {
+            flex: 1;
+            min-height: 0;
         }
         
         .chart-title {

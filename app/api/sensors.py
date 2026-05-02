@@ -119,10 +119,18 @@ async def get_sensor_data(
 async def get_devices(db: Session = Depends(get_db)):
     """取得所有裝置列表"""
     try:
+        print("🔍 /devices API 被呼叫")
+        
         # 確保資料表存在
+        print("🔍 建立資料表...")
         create_tables()
+        print("✅ 資料表建立完成")
+        
+        print("🔍 查詢裝置...")
         devices = db.query(DeviceModel).all()
-        return {
+        print(f"✅ 找到 {len(devices)} 個裝置")
+        
+        result = {
             "status": "success",
             "devices": [
                 {
@@ -134,7 +142,14 @@ async def get_devices(db: Session = Depends(get_db)):
                 for device in devices
             ]
         }
+        print("✅ /devices API 成功回應")
+        return result
+        
     except Exception as e:
+        print(f"❌ /devices API 錯誤: {str(e)}")
+        print(f"❌ 錯誤類型: {type(e)}")
+        import traceback
+        print(f"❌ 詳細錯誤: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"查詢裝置時發生錯誤: {str(e)}"

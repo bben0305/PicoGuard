@@ -163,3 +163,19 @@ async def get_devices(db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"查詢裝置時發生錯誤: {str(e)}"
         )
+
+
+@router.post("/test")
+async def test_endpoint(request: dict, api_key: str = Header(None)):
+    """測試端點 - 用於診斷 Pico 請求"""
+    print("🔍 /test API 被呼叫")
+    print(f"🔍 收到的 API Key: {api_key}")
+    print(f"🔍 收到的數據: {request}")
+    print(f"🔍 請求標頭: {request.headers if hasattr(request, 'headers') else 'N/A'}")
+    
+    return {
+        "status": "success",
+        "message": "測試端點正常運作",
+        "received_api_key": api_key,
+        "received_data": request
+    }

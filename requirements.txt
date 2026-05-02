@@ -1,0 +1,20 @@
+# FastAPI & Server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Data & Database
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+sqlalchemy>=2.0.0
+alembic>=1.11.0
+
+# Utilities
+python-dotenv>=1.0.0
+httpx>=0.24.0
+websockets>=11.0
+
+# Development & Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+ruff>=0.0.280
+mypy>=1.5.0

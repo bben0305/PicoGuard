@@ -107,7 +107,9 @@ function updateCharts(data) {
     const recentData = data.slice(0, 20).reverse();
     const labels = recentData.map(item => {
         const date = new Date(item.timestamp);
-        return date.toLocaleTimeString('zh-TW', {
+        // 转换为台湾时间 (UTC+8)
+        const taiwanTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+        return taiwanTime.toLocaleTimeString('zh-TW', {
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -142,7 +144,9 @@ function updateDataTable(data) {
 
     const rows = data.slice(0, 10).map(item => {
         const date = new Date(item.timestamp);
-        const timeStr = date.toLocaleString('zh-TW', {
+        // 转换为台湾时间 (UTC+8)
+        const taiwanTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+        const timeStr = taiwanTime.toLocaleString('zh-TW', {
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
@@ -255,8 +259,10 @@ async function triggerWatering() {
 // 更新最後更新時間
 function updateLastUpdateTime() {
     const now = new Date();
+    // 转换为台湾时间 (UTC+8)
+    const taiwanTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
     dashboardElements.lastUpdate.textContent = 
-        '最後更新: ' + now.toLocaleTimeString('zh-TW');
+        '最後更新: ' + taiwanTime.toLocaleTimeString('zh-TW');
 }
 
 // 重新整理儀表板

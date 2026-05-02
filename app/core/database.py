@@ -32,8 +32,29 @@ def get_db() -> Session:
 
 def create_tables():
     """建立所有資料表"""
-    from app.models.sensor import Device, SensorData
-    Base.metadata.create_all(bind=engine)
+    try:
+        # 匯入模型類別，這會註冊它們到 Base
+        from app.models.sensor import Device, SensorData
+        print("🔍 匯入模型完成")
+        
+        # 檢查模型是否正確註冊
+        print(f"🔍 Base 中的表: {list(Base.metadata.tables.keys())}")
+        
+        # 建立所有資料表
+        Base.metadata.create_all(bind=engine)
+        print("✅ 資料表建立完成")
+        
+        # 驗證表是否存在
+        from sqlalchemy import inspect
+        inspector_obj = inspect(engine)
+        tables = inspector_obj.get_table_names()
+        print(f"✅ 現有資料表: {tables}")
+        
+    except Exception as e:
+        print(f"❌ 建立資料表時發生錯誤: {str(e)}")
+        import traceback
+        print(f"❌ 詳細錯誤: {traceback.format_exc()}")
+        raise
 
 
 def drop_tables():

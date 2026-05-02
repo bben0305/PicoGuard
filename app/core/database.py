@@ -32,11 +32,11 @@ def get_db() -> Session:
 
 def create_tables():
     """建立所有資料表"""
-    from app.models import Base
+    from app.models.sensor import Device, SensorData
     Base.metadata.create_all(bind=engine)
 
 
 def drop_tables():
     """刪除所有資料表（開發用）"""
-    from app.models import Base
+    from app.models.sensor import Device, SensorData
     Base.metadata.drop_all(bind=engine)

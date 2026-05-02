@@ -8,7 +8,7 @@ from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, create_tables
 from app.models.sensor import SensorData as SensorDataModel, Device as DeviceModel
 
 router = APIRouter(prefix="/api/v1/sensors", tags=["sensors"])
@@ -38,6 +38,8 @@ class SensorDataResponse(BaseModel):
 async def receive_sensor_data(data: SensorData, db: Session = Depends(get_db)):
     """接收 Pico 裝置的感測器數據並儲存到資料庫"""
     try:
+        # 確保資料表存在
+        create_tables()
         # 記錄接收到的數據
         print(f"收到裝置 {data.device_id} 數據:")
         print(f"  土壤濕度: {data.soil_moisture}%")
@@ -93,6 +95,8 @@ async def get_sensor_data(
 ):
     """取得感測器數據"""
     try:
+        # 確保資料表存在
+        create_tables()
         query = db.query(SensorDataModel)
         
         # 根據裝置 ID 過濾
@@ -115,6 +119,8 @@ async def get_sensor_data(
 async def get_devices(db: Session = Depends(get_db)):
     """取得所有裝置列表"""
     try:
+        # 確保資料表存在
+        create_tables()
         devices = db.query(DeviceModel).all()
         return {
             "status": "success",

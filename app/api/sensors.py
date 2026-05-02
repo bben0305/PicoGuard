@@ -34,10 +34,13 @@ class SensorDataResponse(BaseModel):
         from_attributes = True
 
 
-@router.post("/data", status_code=status.HTTP_201_CREATED)
-async def receive_sensor_data(data: SensorData, api_key: str = Header(None), db: Session = Depends(get_db)):
+@router.post("/data/{api_key}", status_code=status.HTTP_201_CREATED)
+async def receive_sensor_data(api_key: str, data: SensorData, db: Session = Depends(get_db)):
     """接收 Pico 裝置的感測器數據並儲存到資料庫"""
     try:
+        print(f"🔍 收到數據請求")
+        print(f"🔍 API Key: {api_key}")
+        
         # 驗證 API Key
         if api_key != "picoguard-device-key-2024":
             print(f"❌ API Key 驗證失敗: {api_key}")
@@ -46,9 +49,6 @@ async def receive_sensor_data(data: SensorData, api_key: str = Header(None), db:
                 detail="無效的 API Key"
             )
         
-        print(f"✅ API Key 驗證成功: {api_key}")
-        # 確保資料表存在
-        create_tables()
         # 記錄接收到的數據
         print(f"收到裝置 {data.device_id} 數據:")
         print(f"  土壤濕度: {data.soil_moisture}%")
@@ -87,7 +87,7 @@ async def receive_sensor_data(data: SensorData, api_key: str = Header(None), db:
             "data_id": sensor_data.id,
             "received_at": datetime.now().isoformat()
         }
-        
+
     except Exception as e:
         db.rollback()
         raise HTTPException(

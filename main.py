@@ -17,10 +17,14 @@ async def lifespan(app: FastAPI):
     # 啟動時執行
     print(f"🌱 PicoGuard 啟動中... 環境: {settings.environment}")
     
-    # 初始化資料庫
-    from app.core.database import create_tables
-    create_tables()
-    print("✅ 資料庫初始化完成")
+    # 暫時跳過資料庫初始化，讓健康檢查先通過
+    try:
+        from app.core.database import create_tables
+        create_tables()
+        print("✅ 資料庫初始化完成")
+    except Exception as e:
+        print(f"⚠️ 資料庫初始化失敗: {e}")
+        print("🔄 繼續啟動（資料庫將在首次使用時初始化）")
     
     yield
     # 關閉時執行

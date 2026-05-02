@@ -5,6 +5,7 @@ PicoGuard Backend Server
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
@@ -40,6 +41,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS 設定 - 允許所有來源，避免代理請求被攔截
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 註冊 API 路由
 app.include_router(sensors_router)
 
@@ -61,6 +71,13 @@ async def root():
 async def health_check():
     """健康檢查端點"""
     return {"status": "healthy", "service": "PicoGuard API"}
+
+
+@app.post("/test")
+async def test_endpoint():
+    """極簡測試端點 - 用於驗證 POST 請求是否到達"""
+    print("!!! RECEIVED TEST !!!")
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":

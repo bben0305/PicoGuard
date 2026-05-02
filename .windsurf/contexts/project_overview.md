@@ -67,22 +67,21 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 2. 使用 Thonny 上傳 `config.py` + `main.py`
 3. 重置 Pico 自動執行
 
-## ⚠️ 已知限制與約束
+## ✅ 系統狀態
 
-### 硬體
-- 普通 Pico (非 Pico W)，需外接 ESP01 模組
-- 無光敏電阻 (已移除)
-- 水泵功能可選 (未測試)
-- 土壤感測器使用防鏽設計 (GPIO 22 電源控制)
+### 已完成
+- ✅ Pico 透過 ESP01 成功上傳感測數據至 Railway 後端
+- ✅ 儀表板顯示即時溫度/濕度趨勢圖
+- ✅ 裝置在線狀態檢測
+- ✅ API Key 驗證機制
+- ✅ CORS 跨域支援
 
-### 韌體
-- MicroPython 不支援 Python 3.10+ 語法 (如 `int | None`)
-- ESP01 AT 指令通訊有字元編碼限制
-- 僅支援 HTTP (非 HTTPS)
-
-### 後端
+### 已知限制
+- MicroPython 不支援 Python 3.10+ 語法
+- 僅支援 HTTP (ESP01 限制)
 - 使用 SQLite (開發階段)
-- API Key 驗證 (簡易安全)
 
 ## 📝 版本歷史
-- v0.1: 專案初始化，Pico + ESP01 韌體完成，待後端 API 實作
+- v0.1: 專案初始化
+- v0.2: 後端 API + 儀表板完成
+- v0.3: ✅ Pico-Railway 數據上傳打通，系統上線

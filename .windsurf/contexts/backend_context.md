@@ -46,11 +46,12 @@ backend/
 - **解法**: 安裝 `pip install fastapi`
 - **狀態**: ✅ 已解決
 
-## 📋 待完成任務
-- [ ] 建立 `app/api/sensors.py` - POST /api/v1/sensors/data
-- [ ] 建立 `app/models/sensor.py` - SQLAlchemy 感測器模型
-- [ ] 建立 `app/services/sensor_service.py` - 資料處理邏輯
-- [ ] 建立 `app/static/dashboard.html` - 簡易儀表板
+## ✅ 已完成任務
+- [x] 建立 `app/api/sensors.py` - POST /api/v1/sensors/data/{api_key}
+- [x] 建立 SQLAlchemy 模型 (Device, SensorData)
+- [x] 建立 `app/static/dashboard.html` - 即時監控儀表板
+- [x] CORS 設定允許所有來源
+- [x] 部署至 Railway 雲端平台
 
 ## 🔌 API 規格 (規劃中)
 

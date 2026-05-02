@@ -1,6 +1,7 @@
 {
   "project": "PicoGuard",
-  "last_updated": "2026-04-29",
+  "last_updated": "2026-05-02",
+  "status": "PRODUCTION",
   "technologies": {
     "backend": {
       "language": "Python 3.10+",
@@ -9,6 +10,8 @@
       "database": "SQLite (SQLAlchemy 2.0+)",
       "config": "Pydantic Settings 2.14+",
       "validation": "Pydantic 2.13+",
+      "deployment": "Railway (Production)",
+      "url": "https://picoguard-production.up.railway.app",
       "key_libraries": [
         "fastapi",
         "uvicorn[standard]",
@@ -22,18 +25,25 @@
       "language": "MicroPython",
       "board": "Raspberry Pi Pico (RP2040)",
       "wifi_module": "ESP01 (ESP8266)",
-      "communication": "UART AT Commands",
+      "communication": "UART AT Commands (txbuf=1024, rxbuf=1024)",
       "sensors": {
         "soil_moisture": "Analog (ADC0, GPIO26)",
-        "dht22": "Digital (GPIO16, optional)"
+        "temperature": "Built-in ADC4 (no DHT22)"
       },
       "key_features": [
         "machine.Pin - GPIO control",
         "machine.ADC - Analog reading",
         "machine.UART - ESP01 communication",
         "machine.PWM - Pump control (optional)",
-        "time.sleep_ms() - Millisecond delays",
-        "time.ticks_ms() - Tick counting"
+        "time.sleep_ms() - Millisecond delays"
+      ],
+      "critical_fixes": [
+        "UART buffer: txbuf=1024, rxbuf=1024 for 329+ bytes HTTP requests",
+        "Forced complete write loop to ensure all bytes enter hardware",
+        "1.5s calm period after sending to avoid AT command interference",
+        "Unified buffer reading to prevent SEND OK from swallowing response",
+        "Host header: picoguard-production.up.railway.app (not proxy)",
+        "No +++ needed for non-transparent mode"
       ]
     },
     "hardware": {
@@ -57,7 +67,8 @@
     "esp01": [
       "AT command communication only",
       "HTTP supported, HTTPS problematic",
-      "UART baudrate 115200"
+      "UART baudrate 115200",
+      "CRITICAL: Must use +++ to exit transparent mode before CIPSEND"
     ],
     "development": [
       "Use Thonny IDE for Pico",

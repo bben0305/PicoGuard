@@ -49,6 +49,64 @@
 - **位置**: `http_post()` 函數第 136 行
 - **狀態**: ✅ 已修正
 
+#### ISSUE-007: HTTP POST Body 被 AT+CIPCLOSE 污染
+- **時間**: 2026-05-02
+- **模組**: firmware/pico/main.py
+- **症狀**: 
+  ```
+  Body: b'{"timestamp": ..., "temperaturAT+CIPCLOSE'
+  ```
+- **根因**: 
+  1. ESP01 前一次連接未正確關閉
+  2. ESP01 處於透傳模式，AT 指令被當成數據發送
+- **解法**: 
+  1. 每次 HTTP 請求前發送 `+++` 退出透傳模式
+  2. 發送 `AT+CIPCLOSE` 關閉殘留連接
+  3. 等待 `>` 提示符確認進入 CIPSEND 模式
+  4. Host header 使用 `picoguard-production.up.railway.app`
+  5. JSON body 添加 `\r\n` 結尾
+- **關鍵程式碼**: `_http_post_tcp()` 函數開頭的恢復邏輯
+- **狀態**: ✅ 已解決，數據成功上傳
+
+#### ISSUE-008: HTTP POST Body 被 AT+CIPCLOSE 污染（最終修復）
+- **時間**: 2026-05-02
+- **症狀**: 
+  1. 後端收到 `AT+CIPCLOSE` 污染的 JSON: `"temperatureAT+CIPCLOSE"`
+  2. Pico 未收到 `SEND OK` 回應
+  3. HTTP 數據 329 bytes 部分發送失敗
+- **根因**: 
+  1. UART 緩衝區太小，無法容納完整 HTTP 請求
+  2. 發送後無冷靜期，AT 指令干擾數據傳輸
+  3. 分離讀取 SEND OK 和伺服器回應導致數據遺失
+- **解法**: 
+  1. **加大 UART 緩衝區**: `txbuf=1024, rxbuf=1024`
+  2. **強制完整寫入**: 循環確保所有 bytes 進入硬體
+  3. **1.5秒冷靜期**: `time.sleep_ms(1500)` 確保數據離開緩衝區
+  4. **統一緩衝區讀取**: 合併 SEND OK 和伺服器回應讀取
+  5. **移除 +++ 退出透傳**: 非透傳模式不需要
+- **關鍵程式碼**: 
+  ```python
+  # UART 初始化
+  UART(0, baudrate=115200, tx=Pin(0), rx=Pin(1), txbuf=1024, rxbuf=1024)
+  
+  # 強制完整寫入
+  bytes_to_send = len(http_bytes)
+  written = 0
+  while written < bytes_to_send:
+      result = self.uart.write(http_bytes[written:])
+      if result:
+          written += result
+  time.sleep_ms(1500)  # 冷靜期
+  
+  # 統一緩衝區讀取
+  raw_buffer = b""
+  while time.time() < timeout:
+      if self.uart.any():
+          chunk = self.uart.read()
+          raw_buffer += chunk
+  ```
+- **狀態**: ✅ 已解決，數據穩定上傳無污染
+
 ---
 
 ### 已解決
@@ -58,6 +116,24 @@
 - **解法**: 加入 `ESCAPE_DELAY` 設定
 - **實作**: `config.ESCAPE_DELAY` + `main.py` 開機延遲
 - **狀態**: ✅ 已實作
+
+---
+
+## 🔍 記憶系統同步準則
+
+### 每次重大修復後必須更新：
+
+1. **issue_log.md** - 記錄問題、根因、解決方案、關鍵程式碼
+2. **tech_stack.json** - 更新技術細節和部署狀態
+3. **firmware_context.md** - 記錄韌體層面的重要修復
+4. **project_overview.md** - 更新系統整體狀態
+
+### 自動檢查清單：
+- [ ] 問題是否完全解決？
+- [ ] 解決方案是否記錄在 issue_log.md？
+- [ ] 技術細節是否更新在 tech_stack.json？
+- [ ] 上下文文件是否同步？
+- [ ] 是否有遺漏的調試代碼需要清理？
 
 #### ISSUE-002: MicroPython 語法不相容
 - **時間**: 2026-04-21

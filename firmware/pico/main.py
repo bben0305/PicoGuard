@@ -48,7 +48,7 @@ class PicoGuardDevice:
         for baud in baudrates:
             try:
                 print("🔍 嘗試波特率:", baud)
-                test_uart = UART(0, baudrate=baud, tx=Pin(0), rx=Pin(1))
+                test_uart = UART(0, baudrate=baud, tx=Pin(0), rx=Pin(1), txbuf=1024, rxbuf=1024)  # 加大緩衝區
                 time.sleep(1)
                 
                 # 清空緩衝區
@@ -196,6 +196,10 @@ class PicoGuardDevice:
         port = host_port[1] if len(host_port) > 1 else "80"
         path = "/" + "/".join(url_parts[1:]) if len(url_parts) > 1 else "/"
 
+        # 關閉任何現有連接
+        self.esp_at_command("AT+CIPCLOSE", 500)
+        time.sleep_ms(100)
+
         # 建立 TCP 連接
         connect_cmd = 'AT+CIPSTART="TCP","' + host + '",' + port
         connect_response = self.esp_at_command(connect_cmd, 5000)
@@ -213,7 +217,7 @@ class PicoGuardDevice:
         content_length = len(json_bytes)
         
         http_request = "POST " + path + " HTTP/1.1\r\n"
-        http_request += "Host: picoguard-production.up.railway.app\r\n"
+        http_request += "Host: picoguard-production.up.railway.app\r\n"  # 強制使用 Railway 域名
         http_request += "Content-Type: application/json\r\n"
         http_request += "X-API-Key: " + api_key + "\r\n"
         http_request += "Content-Length: " + str(content_length) + "\r\n"
@@ -225,10 +229,12 @@ class PicoGuardDevice:
         request_length = len(http_bytes)
 
         # 發送 CIPSEND
+        print("CIPSEND: " + str(request_length))
         cipsend_cmd = "AT+CIPSEND=" + str(request_length)
         self.uart.write((cipsend_cmd + "\r\n").encode())
         
         # 等待 > 提示符
+        print("等待 > ...")
         cipsend_resp = b""
         cipsend_timeout = time.time() + 3
         got_prompt = False
@@ -239,47 +245,55 @@ class PicoGuardDevice:
                     cipsend_resp += chunk
                     if b">" in cipsend_resp:
                         got_prompt = True
+                        print("✓ 收到 >")
                         break
                     if b"ERROR" in cipsend_resp:
+                        print("✗ CIPSEND 錯誤")
                         return 0, "CIPSEND failed"
             time.sleep_ms(100)
         
+        if not got_prompt:
+            print("✗ 未收到 >")
+            return 0, "No prompt"
+        
         # 發送 HTTP 數據
-        self.uart.write(http_bytes)
+        # 確保完整寫入
+        bytes_to_send = len(http_bytes)
+        written = 0
+        while written < bytes_to_send:
+            result = self.uart.write(http_bytes[written:])
+            if result:
+                written += result
+        time.sleep_ms(1500)  # 冷靜期
         
-        # 等待 SEND OK
-        send_ok = b""
-        send_timeout = time.time() + 5
-        while time.time() < send_timeout:
-            if self.uart.any():
-                chunk = self.uart.read()
-                if chunk:
-                    send_ok += chunk
-                    if b"SEND OK" in send_ok:
-                        break
-                    if b"SEND FAIL" in send_ok or b"ERROR" in send_ok:
-                        return 0, "Send failed"
-            time.sleep_ms(100)
-        
-        # 讀取伺服器回應
-        response = b""
-        timeout = time.time() + 10
+        # 讀取回應
+        time.sleep_ms(500)
+        raw_buffer = b""
+        timeout = time.time() + 15
         last_data_time = time.time()
+        got_send_ok = False
         
         while time.time() < timeout:
             if self.uart.any():
                 chunk = self.uart.read()
                 if chunk:
-                    response += chunk
+                    raw_buffer += chunk
                     last_data_time = time.time()
-                    if b"HTTP/1.1" in chunk:
-                        # 找到 HTTP 回應，可選擇性印出狀態碼
-                        pass
+                    
+                    if not got_send_ok and b"SEND OK" in raw_buffer:
+                        got_send_ok = True
+                    
+                    if b"SEND FAIL" in raw_buffer or b"ERROR" in raw_buffer:
+                        return 0, "Send failed"
             else:
-                # 如果1秒沒有新數據，且已經收到一些數據，認為結束
-                if len(response) > 0 and (time.time() - last_data_time) > 1:
+                if len(raw_buffer) > 0 and (time.time() - last_data_time) > 2:
                     break
                 time.sleep_ms(100)
+        
+        if not got_send_ok:
+            return 0, "No SEND OK"
+        
+        response = raw_buffer
         
         # 關閉連接
         self.esp_at_command("AT+CIPCLOSE", 1000)

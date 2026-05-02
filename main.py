@@ -50,16 +50,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 請求日誌中介軟體 - 調試 Pico 請求
-@app.middleware("http")
-async def log_requests(request, call_next):
-    if request.method == "POST" and "/api/v1/sensors" in str(request.url):
-        body = await request.body()
-        print(f"🔍 [中介軟體] 收到 POST 請求: {request.url}")
-        print(f"🔍 [中介軟體] Headers: {dict(request.headers)}")
-        print(f"🔍 [中介軟體] Body: {body[:200] if len(body) > 200 else body}")
-    response = await call_next(request)
-    return response
+# 請求日誌中介軟體（如需調試可啟用）
+# @app.middleware("http")
+# async def log_requests(request, call_next):
+#     if request.method == "POST" and "/api/v1/sensors" in str(request.url):
+#         body = await request.body()
+#         print(f"[調試] POST {request.url}, Body: {body[:100]}...")
+#     response = await call_next(request)
+#     return response
 
 # 註冊 API 路由
 app.include_router(sensors_router)

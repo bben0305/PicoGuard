@@ -202,16 +202,13 @@ async function updateDeviceStatus() {
         
         if (response.status === 'success' && response.devices.length > 0) {
             const device = response.devices[0];
-            const lastSeen = new Date(device.last_seen);
-            const now = new Date();
-            const diffMinutes = (now - lastSeen) / (1000 * 60);
-
+            
             let statusHtml = '';
-            if (diffMinutes < 5) {
+            if (device.is_online) {
                 statusHtml = '<span class="badge badge-success">在線</span>';
                 dashboardElements.waterBtn.disabled = false;
-            } else if (diffMinutes < 30) {
-                statusHtml = '<span class="badge badge-warning">離線 ' + Math.floor(diffMinutes) + ' 分鐘</span>';
+            } else if (device.offline_minutes !== null && device.offline_minutes < 30) {
+                statusHtml = '<span class="badge badge-warning">離線 ' + device.offline_minutes + ' 分鐘</span>';
                 dashboardElements.waterBtn.disabled = true;
             } else {
                 statusHtml = '<span class="badge badge-danger">離線</span>';

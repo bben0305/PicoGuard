@@ -128,31 +128,35 @@ async def get_sensor_data(
 async def get_devices(db: Session = Depends(get_db)):
     """取得所有裝置列表"""
     try:
-        print("🔍 /devices API 被呼叫")
-        
-        # 確保資料表存在
-        print("🔍 建立資料表...")
         create_tables()
-        print("✅ 資料表建立完成")
-        
-        print("🔍 查詢裝置...")
         devices = db.query(DeviceModel).all()
-        print(f"✅ 找到 {len(devices)} 個裝置")
         
-        result = {
+        # 計算在線狀態（在後端處理時區問題）
+        now = datetime.utcnow()
+        result_devices = []
+        for device in devices:
+            last_seen = device.last_seen
+            is_online = False
+            offline_minutes = None
+            
+            if last_seen:
+                diff_minutes = (now - last_seen).total_seconds() / 60
+                offline_minutes = int(diff_minutes)
+                is_online = diff_minutes < 5
+            
+            result_devices.append({
+                "device_id": device.device_id,
+                "name": device.name,
+                "created_at": device.created_at.isoformat() if device.created_at else None,
+                "last_seen": device.last_seen.isoformat() if device.last_seen else None,
+                "is_online": is_online,
+                "offline_minutes": offline_minutes,
+            })
+        
+        return {
             "status": "success",
-            "devices": [
-                {
-                    "device_id": device.device_id,
-                    "name": device.name,
-                    "created_at": device.created_at.isoformat() if device.created_at else None,
-                    "last_seen": device.last_seen.isoformat() if device.last_seen else None,
-                }
-                for device in devices
-            ]
+            "devices": result_devices
         }
-        print("✅ /devices API 成功回應")
-        return result
         
     except Exception as e:
         print(f"❌ /devices API 錯誤: {str(e)}")

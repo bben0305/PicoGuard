@@ -41,8 +41,41 @@ class PicoGuardDevice:
             self.sensor_power.value(0)  # 預設關閉電源
             print("防鏽電源控制已啟用 (GPIO " + str(config.SENSOR_POWER_PIN) + ")")
 
-        # 初始化 UART 連接 ESP01 (TX=GPIO0, RX=GPIO1)
-        self.uart = UART(0, baudrate=115200, tx=Pin(0), rx=Pin(1))
+        # 初始化 UART 連接 ESP01 (TX=GPIO0, RX=GPIO1) - 嘗試多種波特率
+        baudrates = [115200, 9600, 38400, 57600]
+        self.uart = None
+        
+        for baud in baudrates:
+            try:
+                print("🔍 嘗試波特率:", baud)
+                test_uart = UART(0, baudrate=baud, tx=Pin(0), rx=Pin(1))
+                time.sleep(1)
+                
+                # 清空緩衝區
+                while test_uart.any():
+                    test_uart.read()
+                
+                # 測試 AT 指令
+                test_uart.write("AT\r\n".encode())
+                time.sleep(1)
+                
+                response = b""
+                while test_uart.any():
+                    response += test_uart.read()
+                
+                if b"OK" in response:
+                    print("✅ ESP01 連接成功，波特率:", baud)
+                    self.uart = test_uart
+                    break
+                else:
+                    print("❌ 波特率", baud, "無回應")
+                    
+            except Exception as e:
+                print("❌ 波特率", baud, "測試失敗:", str(e))
+        
+        if self.uart is None:
+            print("[ERR] ESP01 連接失敗 - 檢查接線和電源")
+            print("💡 提示: 確保 ESP01 EN 腳連接到 3.3V")
 
         # 水泵為可選，嘗試初始化
         self.pump_pin = None
@@ -103,66 +136,20 @@ class PicoGuardDevice:
         return False
 
     def http_post(self, url, data, headers):
-        """使用 ESP01 發送 HTTP POST 請求"""
+        """使用 ESP01 發送 HTTP POST 請求 - 使用 AT+HTTPCLIENT 指令"""
         import json
 
-        # 解析 URL 取得 host 和 port
+        # 解析 URL
         url_parts = url.replace("http://", "").split("/")
         host_port = url_parts[0].split(":")
         host = host_port[0]
         port = host_port[1] if len(host_port) > 1 else "80"
         path = "/" + "/".join(url_parts[1:]) if len(url_parts) > 1 else "/"
+        full_url = "http://" + host + ":" + port + path
 
-        # 建立 TCP 連接
-        connect_cmd = 'AT+CIPSTART="TCP","' + host + '",' + port
-        self.esp_at_command(connect_cmd, 3000)
-
-        # 構建 HTTP 請求
-        header_lines = []
-        for k, v in headers.items():
-            header_lines.append(k + ": " + v)
-        header_str = "\r\n".join(header_lines)
-        
-        http_request = "POST " + path + " HTTP/1.1\r\n"
-        http_request += "Host: " + host + ":" + port + "\r\n"
-        http_request += header_str + "\r\n"
-        http_request += "Content-Length: " + str(len(data)) + "\r\n"
-        http_request += "\r\n"
-        http_request += data
-
-        # 發送數據
-        cipsend_cmd = "AT+CIPSEND=" + str(len(http_request))
-        self.esp_at_command(cipsend_cmd, 1000)
-        self.uart.write(http_request.encode())
-        time.sleep_ms(1000)
-
-        # 讀取回應
-        response = b""
-        timeout = time.time() + 5  # 5秒超時
-        while time.time() < timeout:
-            if self.uart.any():
-                response += self.uart.read()
-                time.sleep_ms(100)
-            else:
-                break
-
-        try:
-            response_str = response.decode('utf-8')
-        except:
-            response_str = response.decode('utf-8', 'ignore')
-
-        # 關閉連接
-        self.esp_at_command("AT+CIPCLOSE", 1000)
-
-        # 解析狀態碼
-        status_code = 0
-        if "HTTP/1.1" in response_str:
-            try:
-                status_code = int(response_str.split("HTTP/1.1 ")[1].split(" ")[0])
-            except:
-                pass
-
-        return status_code, response_str
+        # 直接使用 TCP 方法（ESP01 不支援 AT+HTTPCLIENT）
+        api_key = getattr(config, 'API_KEY', 'NOT_FOUND')
+        return self._http_post_tcp(url, data, headers, api_key)
 
     def read_soil_moisture(self):
         """
@@ -199,6 +186,115 @@ class PicoGuardDevice:
 
         soil_percent = max(0, min(100, soil_percent))
         return soil_percent, raw_val
+
+    def _http_post_tcp(self, url, data, headers, api_key):
+        """使用 TCP 發送 HTTP POST 請求"""
+        # 解析 URL
+        url_parts = url.replace("http://", "").split("/")
+        host_port = url_parts[0].split(":")
+        host = host_port[0]
+        port = host_port[1] if len(host_port) > 1 else "80"
+        path = "/" + "/".join(url_parts[1:]) if len(url_parts) > 1 else "/"
+
+        # 建立 TCP 連接
+        connect_cmd = 'AT+CIPSTART="TCP","' + host + '",' + port
+        connect_response = self.esp_at_command(connect_cmd, 5000)
+
+        if "CONNECT" not in connect_response and "OK" not in connect_response:
+            return 0, "TCP connect failed"
+
+        # 構建 HTTP 請求
+        # 關鍵修正：Content-Length 必須是 JSON 數據的 bytes 長度
+        # json_bytes = data.encode('utf-8')
+        # content_length = len(json_bytes)
+
+        body_with_newline = data + "\r\n"
+        json_bytes = body_with_newline.encode('utf-8')
+        content_length = len(json_bytes)
+        
+        http_request = "POST " + path + " HTTP/1.1\r\n"
+        http_request += "Host: picoguard-production.up.railway.app\r\n"
+        http_request += "Content-Type: application/json\r\n"
+        http_request += "X-API-Key: " + api_key + "\r\n"
+        http_request += "Content-Length: " + str(content_length) + "\r\n"
+        http_request += "Connection: close\r\n"  # 要求伺服器關閉連接
+        http_request += "\r\n"
+        http_request += body_with_newline
+
+        http_bytes = http_request.encode('utf-8')
+        request_length = len(http_bytes)
+
+        # 發送 CIPSEND
+        cipsend_cmd = "AT+CIPSEND=" + str(request_length)
+        self.uart.write((cipsend_cmd + "\r\n").encode())
+        
+        # 等待 > 提示符
+        cipsend_resp = b""
+        cipsend_timeout = time.time() + 3
+        got_prompt = False
+        while time.time() < cipsend_timeout:
+            if self.uart.any():
+                chunk = self.uart.read()
+                if chunk:
+                    cipsend_resp += chunk
+                    if b">" in cipsend_resp:
+                        got_prompt = True
+                        break
+                    if b"ERROR" in cipsend_resp:
+                        return 0, "CIPSEND failed"
+            time.sleep_ms(100)
+        
+        # 發送 HTTP 數據
+        self.uart.write(http_bytes)
+        
+        # 等待 SEND OK
+        send_ok = b""
+        send_timeout = time.time() + 5
+        while time.time() < send_timeout:
+            if self.uart.any():
+                chunk = self.uart.read()
+                if chunk:
+                    send_ok += chunk
+                    if b"SEND OK" in send_ok:
+                        break
+                    if b"SEND FAIL" in send_ok or b"ERROR" in send_ok:
+                        return 0, "Send failed"
+            time.sleep_ms(100)
+        
+        # 讀取伺服器回應
+        response = b""
+        timeout = time.time() + 10
+        last_data_time = time.time()
+        
+        while time.time() < timeout:
+            if self.uart.any():
+                chunk = self.uart.read()
+                if chunk:
+                    response += chunk
+                    last_data_time = time.time()
+                    if b"HTTP/1.1" in chunk:
+                        # 找到 HTTP 回應，可選擇性印出狀態碼
+                        pass
+            else:
+                # 如果1秒沒有新數據，且已經收到一些數據，認為結束
+                if len(response) > 0 and (time.time() - last_data_time) > 1:
+                    break
+                time.sleep_ms(100)
+        
+        # 關閉連接
+        self.esp_at_command("AT+CIPCLOSE", 1000)
+
+        response_str = response.decode('utf-8', 'ignore')
+
+        # 解析狀態碼
+        status_code = 0
+        if "HTTP/1.1" in response_str:
+            try:
+                status_code = int(response_str.split("HTTP/1.1 ")[1].split(" ")[0])
+            except:
+                pass
+
+        return status_code, response_str
 
     def read_sensors(self):
         """讀取所有感測器數據（土壤濕度 + 內建溫度）"""
@@ -244,25 +340,20 @@ class PicoGuardDevice:
 
             headers = {
                 "Content-Type": "application/json",
-                "X-API-Key": config.API_KEY,
             }
 
             json_data = json.dumps(data)
-            api_url = config.API_BASE_URL + "/api/v1/sensors/data"
-            status_code, response = self.http_post(
-                api_url,
-                json_data,
-                headers
-            )
+            api_url = config.API_BASE_URL + "/api/v1/sensors/data/" + config.API_KEY
+            status_code, response = self.http_post(api_url, json_data, headers)
 
-            if status_code == 200:
+            if status_code == 200 or status_code == 201:
                 print("數據已上傳")
                 self.led_status.value(1)
                 time.sleep_ms(100)
                 self.led_status.value(0)
                 return True
             else:
-                print("API 回應錯誤: " + str(status_code))
+                print("API 錯誤: " + str(status_code))
                 return False
 
         except Exception as e:

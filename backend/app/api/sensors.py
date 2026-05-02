@@ -38,6 +38,7 @@ class SensorDataResponse(BaseModel):
 async def receive_sensor_data(data: SensorData, db: Session = Depends(get_db)):
     """接收 Pico 裝置的感測器數據並儲存到資料庫"""
     try:
+        print(f"✅ Pydantic 解析成功: {data}")
         # 記錄接收到的數據
         print(f"收到裝置 {data.device_id} 數據:")
         print(f"  土壤濕度: {data.soil_moisture}%")

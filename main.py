@@ -36,8 +36,8 @@ app = FastAPI(
     title="PicoGuard API",
     description="智能植栽監控系統 API",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None,  # 隐藏 API 文档
+    redoc_url=None,  # 隐藏 ReDoc 文档
     lifespan=lifespan,
 )
 
@@ -72,7 +72,7 @@ async def root():
     return {
         "message": "Welcome to PicoGuard API",
         "version": "1.0.0",
-        "docs": "/docs",
+        "status": "running",
     }
 
 

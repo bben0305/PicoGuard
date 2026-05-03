@@ -52,7 +52,7 @@ async def trigger_watering(request: WaterRequest):
         print(f"[控制] 收到澆水請求: {request.duration}ms")
         
         # 詳細記錄澆水請求
-        print(f"[控制] 💧 收到澆水請求: {duration}ms")
+        print(f"[控制] 💧 收到澆水請求: {request.duration}ms")
         print(f"[控制] 📋 待處理指令數量: {len(pending_commands)}")
         print(f"[控制] 📄 新增指令: {command}")
         print(f"[控制] 📤 回應: {response}")

@@ -403,15 +403,34 @@ class PicoGuardDevice:
             
             if status_code == 200:
                 import json
-                commands = json.loads(response)
+                print("後端回應原始: " + response)  # 完整輸出用於調試
                 
-                for cmd in commands:
-                    if cmd.get("command") == "water" and cmd.get("status") == "on":
-                        print("收到待處理澆水指令，執行中...")
-                        self.trigger_pump(cmd.get("duration", 3000))
-                    elif cmd.get("command") == "water" and cmd.get("status") == "off":
-                        print("收到停止澆水指令")
-                        self.pump_pin.value(1)
+                # 嘗試直接解析整個回應
+                try:
+                    # 移除可能的 HTTP 頭部
+                    json_start = response.find('[')
+                    if json_start != -1:
+                        json_str = response[json_start:]
+                        print("提取的 JSON: " + json_str)
+                        commands = json.loads(json_str)
+                        print(f"成功解析 {len(commands)} 個指令")
+                        
+                        for cmd in commands:
+                            if cmd.get("command") == "water" and cmd.get("status") == "on":
+                                print("收到待處理澆水指令，執行中...")
+                                self.trigger_pump(cmd.get("duration", 3000))
+                            elif cmd.get("command") == "water" and cmd.get("status") == "off":
+                                print("收到停止澆水指令")
+                                self.pump_pin.value(1)
+                    else:
+                        print("回應中未找到 JSON 數組")
+                        
+                except json.JSONDecodeError as je:
+                    print(f"JSON 解析錯誤: {je}")
+                    print("回應內容: " + str(response))
+                except Exception as e:
+                    print(f"解析異常: {e}")
+                    print("回應內容: " + str(response))
                         
         except Exception as e:
             print("檢查澆水指令失敗: " + str(e))
@@ -419,11 +438,14 @@ class PicoGuardDevice:
     def http_get(self, url):
         """簡單的 HTTP GET 請求"""
         try:
+            print(f"[HTTP GET] 請求 URL: {url}")
             url_parts = url.replace("http://", "").split("/")
             host_port = url_parts[0].split(":")
             host = host_port[0]
             port = host_port[1] if len(host_port) > 1 else "80"
             path = "/" + "/".join(url_parts[1:]) if len(url_parts) > 1 else "/"
+
+            print(f"[HTTP GET] 主機: {host}, 端口: {port}, 路徑: {path}")
 
             # 建立 TCP 連接
             connect_cmd = 'AT+CIPSTART="TCP","' + host + '",' + port
@@ -432,8 +454,11 @@ class PicoGuardDevice:
             if "CONNECT" not in connect_response and "OK" not in connect_response:
                 return 0, "TCP connect failed"
 
+            print(f"[HTTP GET] TCP 連接成功")
+
             # 發送 HTTP GET 請求
             get_request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
+            print(f"[HTTP GET] 發送請求: {get_request}")
             self.uart.write(get_request.encode())
             time.sleep_ms(1000)
 

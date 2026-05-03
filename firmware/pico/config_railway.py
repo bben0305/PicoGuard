@@ -39,8 +39,8 @@ ENABLE_TEMP_SENSOR = True  # Pico 內建溫度感測器，無需外接硬體
 LED_PIN = 25
 
 # 水泵（可選功能）
-ENABLE_PUMP = False  # 設為 True 啟用水泵
-PUMP_PIN = 15  # GPIO 15 (PWM控制)
+ENABLE_PUMP = True  # 設為 True 啟用水泵
+PUMP_PIN = 2  # GPIO 2 (數位控制，低電平觸發）
 
 # ==================== 運作參數 ====================
 # 數據上傳間隔（秒）

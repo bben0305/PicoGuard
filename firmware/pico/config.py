@@ -16,7 +16,7 @@ WIFI_PASSWORD = "0975583835"
 # ==================== API 設定 ====================
 # 後端 API 位址（使用 IP 或網域名稱，需同一網段）
 API_BASE_URL = "http://192.168.1.100:8000"
-API_KEY = "pico-device-key"  # 與後端設定一致的 API 金鑰
+API_KEY = "picoguard-device-key-2024"  # 與後端設定一致的 API 金鑰
 
 # ==================== ESP01 設定 ====================
 # ESP01 接線（UART0）：

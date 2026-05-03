@@ -5,7 +5,11 @@ PicoGuard 控制器 API
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+import time
+
+# 簡單的記憶體存儲（生產環境建議使用資料庫）
+pending_commands = []
 
 router = APIRouter(prefix="/api/v1/controls", tags=["controls"])
 
@@ -19,12 +23,24 @@ class WaterResponse(BaseModel):
     duration: int
     message: str
 
+class Command(BaseModel):
+    command: str
+    status: str
+    duration: Optional[int] = None
+    timestamp: float
+
 @router.post("/water", response_model=WaterResponse)
 async def trigger_watering(request: WaterRequest):
     """觸發澆水功能"""
     try:
-        # 這裡只是返回指令，實際的澆水由 Pico 在下次數據上傳時執行
-        # Pico 會解析這個 JSON 響應並執行澆水
+        # 儲存指令到記憶體
+        command = Command(
+            command="water",
+            status="on",
+            duration=request.duration,
+            timestamp=time.time()
+        )
+        pending_commands.append(command)
         
         response = WaterResponse(
             command="water",
@@ -34,6 +50,7 @@ async def trigger_watering(request: WaterRequest):
         )
         
         print(f"[控制] 收到澆水請求: {request.duration}ms")
+        print(f"[控制] 待處理指令數量: {len(pending_commands)}")
         return response
         
     except Exception as e:
@@ -43,6 +60,14 @@ async def trigger_watering(request: WaterRequest):
 async def stop_watering():
     """停止澆水"""
     try:
+        command = Command(
+            command="water",
+            status="off",
+            duration=0,
+            timestamp=time.time()
+        )
+        pending_commands.append(command)
+        
         response = WaterResponse(
             command="water",
             status="off",
@@ -55,3 +80,17 @@ async def stop_watering():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"停止澆水指令發送失敗: {str(e)}")
+
+@router.get("/commands/pending/{device_id}", response_model=List[Command])
+async def get_pending_commands(device_id: str):
+    """獲取待處理的指令"""
+    try:
+        # 返回並清除待處理指令
+        commands_to_return = pending_commands.copy()
+        pending_commands.clear()
+        
+        print(f"[控制] 返回 {len(commands_to_return)} 個待處理指令給設備: {device_id}")
+        return commands_to_return
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"獲取待處理指令失敗: {str(e)}")

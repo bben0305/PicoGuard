@@ -33,6 +33,10 @@ class PicoGuardDevice:
         # 初始化感測器腳位
         self.soil_sensor = ADC(Pin(config.SOIL_SENSOR_PIN))
         self.led_status = Pin(config.LED_PIN, Pin.OUT)
+        
+        # 初始化水泵引腳 (GP2) - 立即設定為 HIGH 確保水泵關閉
+        self.pump_pin = Pin(2, Pin.OUT, value=1)  # 低電平觸發，給 1 關閉
+        print("水泵引腳已初始化 (GPIO 2，低電平觸發，初始狀態: 關閉)")
 
         # 防鏽設計：使用 GPIO 控制感測器電源
         self.sensor_power = None
@@ -77,16 +81,8 @@ class PicoGuardDevice:
             print("[ERR] ESP01 連接失敗 - 檢查接線和電源")
             print("💡 提示: 確保 ESP01 EN 腳連接到 3.3V")
 
-        # 水泵為可選，嘗試初始化
-        self.pump_pin = None
-        if config.ENABLE_PUMP:
-            try:
-                self.pump_pin = PWM(Pin(config.PUMP_PIN))
-                self.pump_pin.freq(1000)
-                self.pump_pin.duty_u16(0)  # 初始關閉
-                print("水泵已初始化")
-            except Exception as e:
-                print("[WARN] 水泵初始化失敗: " + str(e))
+        # 水泵已在 GP2 初始化完成 (見第38行)
+        # 不需要額外初始化，避免衝突
 
     def esp_at_command(self, cmd, timeout=2000):
         """發送 AT 指令到 ESP01"""
@@ -308,6 +304,27 @@ class PicoGuardDevice:
             except:
                 pass
 
+        # 檢查後端指令響應
+        if status_code == 200:
+            try:
+                # 嘗試解析 JSON 響應
+                import json
+                json_start = response_str.find('{')
+                json_end = response_str.rfind('}') + 1
+                if json_start != -1 and json_end > json_start:
+                    json_str = response_str[json_start:json_end]
+                    response_data = json.loads(json_str)
+                    
+                    # 檢查是否包含水泵指令
+                    if response_data.get("command") == "water" and response_data.get("status") == "on":
+                        print("收到後端澆水指令，執行水泵...")
+                        self.trigger_pump(3000)
+                    elif response_data.get("command") == "water" and response_data.get("status") == "off":
+                        print("收到後端停止澆水指令")
+                        self.pump_pin.value(1)  # 確保關閉
+            except:
+                pass  # JSON 解析失敗，忽略
+
         return status_code, response_str
 
     def read_sensors(self):
@@ -352,6 +369,9 @@ class PicoGuardDevice:
         try:
             import json
 
+            # 檢查是否有待處理的澆水指令
+            self.check_watering_commands()
+
             headers = {
                 "Content-Type": "application/json",
             }
@@ -374,26 +394,84 @@ class PicoGuardDevice:
             print("上傳失敗: " + str(e))
             return False
 
-    def run_pump(self, duration_ms=None):
-        """執行澆水動作（可選功能）"""
-        if not config.ENABLE_PUMP or self.pump_pin is None:
-            print("[WARN] 水泵功能未啟用")
-            return False
+    def check_watering_commands(self):
+        """檢查並執行澆水指令"""
+        try:
+            # 查詢後端是否有澆水指令
+            api_url = config.API_BASE_URL + "/api/v1/commands/pending/" + config.API_KEY
+            status_code, response = self.http_get(api_url)
+            
+            if status_code == 200:
+                import json
+                commands = json.loads(response)
+                
+                for cmd in commands:
+                    if cmd.get("command") == "water" and cmd.get("status") == "on":
+                        print("收到待處理澆水指令，執行中...")
+                        self.trigger_pump(cmd.get("duration", 3000))
+                    elif cmd.get("command") == "water" and cmd.get("status") == "off":
+                        print("收到停止澆水指令")
+                        self.pump_pin.value(1)
+                        
+        except Exception as e:
+            print("檢查澆水指令失敗: " + str(e))
 
-        if duration_ms is None:
-            duration_ms = config.DEFAULT_WATER_DURATION
+    def http_get(self, url):
+        """簡單的 HTTP GET 請求"""
+        try:
+            url_parts = url.replace("http://", "").split("/")
+            host_port = url_parts[0].split(":")
+            host = host_port[0]
+            port = host_port[1] if len(host_port) > 1 else "80"
+            path = "/" + "/".join(url_parts[1:]) if len(url_parts) > 1 else "/"
 
+            # 建立 TCP 連接
+            connect_cmd = 'AT+CIPSTART="TCP","' + host + '",' + port
+            connect_response = self.esp_at_command(connect_cmd, 5000)
+
+            if "CONNECT" not in connect_response and "OK" not in connect_response:
+                return 0, "TCP connect failed"
+
+            # 發送 HTTP GET 請求
+            get_request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
+            self.uart.write(get_request.encode())
+            time.sleep_ms(1000)
+
+            # 讀取回應
+            response = b""
+            timeout = time.time() + 10
+            while time.time() < timeout:
+                if self.uart.any():
+                    chunk = self.uart.read()
+                    if chunk:
+                        response += chunk
+                else:
+                    time.sleep_ms(100)
+                    if len(response) > 0:
+                        break
+
+            # 關閉連接
+            self.esp_at_command("AT+CIPCLOSE", 1000)
+
+            return 200, response.decode('utf-8', 'ignore')
+            
+        except Exception as e:
+            return 0, str(e)
+
+    def trigger_pump(self, duration_ms=3000):
+        """觸發水泵控制（GP2 數位控制，低電平觸發）"""
         print("啟動水泵 " + str(duration_ms) + "ms")
         try:
-            self.pump_pin.duty_u16(65535)  # 全速
+            # 開啟水泵（低電平觸發，給 0）
+            self.pump_pin.value(0)
             time.sleep_ms(duration_ms)
-            self.pump_pin.duty_u16(0)  # 停止
-            print("澆水完成")
-            return True
         except Exception as e:
             print("水泵錯誤: " + str(e))
-            self.pump_pin.duty_u16(0)
-            return False
+        finally:
+            # 絕對執行：確保水泵最終一定會關閉
+            self.pump_pin.value(1)
+            print("水泵已關閉")
+        return True
 
     def run(self):
         """主執行迴圈"""
@@ -424,6 +502,9 @@ class PicoGuardDevice:
         print("上傳間隔: " + str(config.SEND_INTERVAL) + " 秒")
         print("=" * 40)
 
+        # 本地端緊急澆水計數器
+        dry_count = 0
+
         while True:
             current_time = time.time()
 
@@ -433,8 +514,21 @@ class PicoGuardDevice:
                 print("")
                 print("感測數據:")
                 print("   土壤濕度: " + str(sensor_data['soil_moisture']) + "%")
+                print("   土壤原始值: " + str(sensor_data['soil_raw']))
                 if sensor_data['temperature'] is not None:
                     print("   溫度: " + str(sensor_data['temperature']) + "C")
+
+                # 本地端緊急澆水邏輯
+                if sensor_data['soil_raw'] > 64000:
+                    dry_count += 1
+                    print("   [警告] 土壤過於乾燥，計數: " + str(dry_count) + "/3")
+                    
+                    if dry_count >= 3:
+                        print("   [緊急] 執行本地澆水")
+                        self.trigger_pump(3000)
+                        dry_count = 0  # 重置計數器
+                else:
+                    dry_count = 0  # 重置計數器
 
                 if self.connected:
                     self.send_data(sensor_data)

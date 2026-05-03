@@ -62,7 +62,7 @@ app.add_middleware(
 
 # 註冊 API 路由
 app.include_router(sensors_router)
-app.include_router(controls_router)
+app.include_router(controls_router, prefix="/api/v1")
 
 # 掛載靜態檔案
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

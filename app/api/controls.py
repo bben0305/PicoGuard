@@ -6,12 +6,13 @@ PicoGuard 控制器 API
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 import time
 
 # 簡單的記憶體存儲（生產環境建議使用資料庫）
 pending_commands = []
 
-router = APIRouter(prefix="/api/v1/controls", tags=["controls"])
+router = APIRouter(tags=["controls"])
 
 class WaterRequest(BaseModel):
     duration: Optional[int] = 3000  # 澆水時間（毫秒）
@@ -27,32 +28,33 @@ class Command(BaseModel):
     command: str
     status: str
     duration: Optional[int] = None
-    timestamp: float
+    timestamp: datetime
 
-@router.post("/water", response_model=WaterResponse)
-async def trigger_watering(request: WaterRequest):
-    """觸發澆水功能"""
+@router.post("/controls/water", response_model=WaterResponse)
+async def start_watering(duration: int = 3000):
+    """啟動澆水"""
     try:
-        # 儲存指令到記憶體
         command = Command(
             command="water",
             status="on",
-            duration=request.duration,
-            timestamp=time.time()
+            duration=duration,
+            timestamp=datetime.now()
         )
+        
+        # 添加到待處理指令
         pending_commands.append(command)
         
         response = WaterResponse(
             command="water",
             status="on",
-            duration=request.duration,
-            message=f"澆水指令已發送，持續時間: {request.duration}ms"
+            duration=duration,
+            message=f"澆水指令已發送，持續時間: {duration}ms"
         )
         
-        print(f"[控制] 收到澆水請求: {request.duration}ms")
+        print(f"[控制] 收到澆水請求: {duration}ms")
         
         # 詳細記錄澆水請求
-        print(f"[控制] 💧 收到澆水請求: {request.duration}ms")
+        print(f"[控制] 💧 收到澆水請求: {duration}ms")
         print(f"[控制] 📋 待處理指令數量: {len(pending_commands)}")
         print(f"[控制] 📄 新增指令: {command}")
         print(f"[控制] 📤 回應: {response}")
@@ -63,7 +65,7 @@ async def trigger_watering(request: WaterRequest):
         print(f"[控制] ❌ 澆水指令發送失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=f"澆水指令發送失敗: {str(e)}")
 
-@router.post("/water/stop", response_model=WaterResponse)
+@router.post("/controls/water/stop", response_model=WaterResponse)
 async def stop_watering():
     """停止澆水"""
     try:
@@ -71,8 +73,10 @@ async def stop_watering():
             command="water",
             status="off",
             duration=0,
-            timestamp=time.time()
+            timestamp=datetime.now()
         )
+        
+        # 添加到待處理指令
         pending_commands.append(command)
         
         response = WaterResponse(
@@ -111,7 +115,7 @@ async def get_pending_commands(device_id: str):
         # 記錄回應 JSON 格式
         import json
         response_json = [cmd.dict() for cmd in commands_to_return]
-        print(f"[控制] 📄 回應 JSON: {json.dumps(response_json, ensure_ascii=False)}")
+        print(f"[控制] 📄 回應 JSON: {json.dumps(response_json, ensure_ascii=False, default=str)}")
         
         return commands_to_return
         

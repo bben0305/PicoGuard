@@ -238,17 +238,16 @@ async function triggerWatering() {
     dashboardElements.waterBtn.textContent = '執行中...';
 
     try {
-        // TODO: 實作澆水 API
-        // const response = await PicoGuard.apiRequest('/controls/water', {
-        //     method: 'POST',
-        //     body: JSON.stringify({ duration: 2000 })
-        // });
+        // 實作澆水 API
+        const response = await PicoGuard.apiRequest('/controls/water', {
+            method: 'POST',
+            body: JSON.stringify({ duration: 3000 })
+        });
         
-        // 模擬延遲
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        alert('澆水完成！');
+        console.log('澆水響應:', response);
+        alert('澆水指令已發送！Pico 將在下一次數據上傳時執行澆水。');
     } catch (error) {
+        console.error('澆水請求失敗:', error);
         alert('澆水失敗: ' + error.message);
     } finally {
         dashboardElements.waterBtn.disabled = false;

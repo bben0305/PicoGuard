@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.api import sensors_router
+from app.api.controls import router as controls_router
 
 
 @asynccontextmanager
@@ -61,6 +62,7 @@ app.add_middleware(
 
 # 註冊 API 路由
 app.include_router(sensors_router)
+app.include_router(controls_router)
 
 # 掛載靜態檔案
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
